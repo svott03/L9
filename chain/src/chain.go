@@ -1,7 +1,12 @@
 package src
 
+import (
+	"net/http"
+	"encoding/binary"
+)
+
 type Chain struct {
-	NodeCount int;
+	NodeCount uint32;
 	Root *Block;
 }
 
@@ -10,12 +15,32 @@ func (c *Chain) Run() {
 	c.Root = &Block{
 		ID: "Genesis",
 	}
-	// listen to endpoints
+	// Listens to Concurrent requests
+	http.HandleFunc("/join", join(c))
+	http.HandleFunc("/transact", transact(c))
+	http.HandleFunc("/verify", verify(c))
+
+	http.ListenAndServe(":8080", nil)
+
 }
 
-func (c *Chain) nodeAssign {
-	// assign node id
+// Incoming Nodes
+func join(c *Chain) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		bs := make([]byte, 4)
+    binary.LittleEndian.PutUint32(bs, c.NodeCount)
+		w.Write(bs)
+		c.NodeCount++
+	}
 }
+
+// Incoming blocks
+func verify(c *Chain) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// verification
+	}
+}
+
 
 
 // maintain a linked list of blocks
@@ -24,3 +49,5 @@ func (c *Chain) nodeAssign {
 
 // TODO encode transactions in blocks
 // TODO validate transactions
+
+// TODO while broadcasting, cannot accept new incoming requests
