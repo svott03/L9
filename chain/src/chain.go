@@ -7,6 +7,7 @@ import (
 
 type Chain struct {
 	NodeCount uint32;
+	CoinCount uint32;
 	Root *Block;
 }
 
@@ -17,7 +18,6 @@ func (c *Chain) Run() {
 	}
 	// Listens to Concurrent requests
 	http.HandleFunc("/join", join(c))
-	http.HandleFunc("/transact", transact(c))
 	http.HandleFunc("/verify", verify(c))
 
 	http.ListenAndServe(":8080", nil)
@@ -37,7 +37,9 @@ func join(c *Chain) http.HandlerFunc {
 // Incoming blocks
 func verify(c *Chain) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// verification
+		// verify hash
+
+		// will only add block that contains the current block as previous block
 	}
 }
 

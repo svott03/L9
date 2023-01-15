@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example.com/L9/src"
+	"example.com/blockchain/src"
 )
 
 func main() {
