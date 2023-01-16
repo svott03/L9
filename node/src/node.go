@@ -1,18 +1,19 @@
 package src
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
-	"encoding/json"
-	"bytes"
 )
 
 type Node struct {
-	port uint32
-	CurBlock *Block
+	port           uint32
+	CurBlock       *Block
+	ChainBlock     *Block `json:"chain_block"`
 	miningAttempts int
-	coins int
+	coins          int
 }
 
 // TODO put mutex on Node's block
@@ -23,21 +24,22 @@ func (n *Node) Run() {
 		fmt.Println(err)
 	}
 	var r struct {
-		Port uint32
-		RootBlock Block
+		Port      uint32
+		RootBlock *Block
 	}
 	_ = json.NewDecoder(res.Body).Decode(&r)
+	fmt.Printf("%+v\n", *r.RootBlock)
 	n.port = r.Port
-	// GC transfers ownership, so the deallocation of r does not affect n.CurBlock
-	n.CurBlock = &r.RootBlock
+	// GC transfers ownership
+	n.ChainBlock = r.RootBlock
+	n.CurBlock = n.ChainBlock
+	n.CurBlock.Previous = n.ChainBlock
 	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(int(n.port)))
-
 	// need routine for I/O
 	go Input(n)
-
 	// listen on port
 	http.HandleFunc("/newBlock", newBlock(n))
-	http.ListenAndServe(":" + strconv.Itoa(int(n.port)), nil)
+	http.ListenAndServe(":"+strconv.Itoa(int(n.port)), nil)
 }
 
 func Input(n *Node) {
@@ -65,8 +67,11 @@ func Input(n *Node) {
 // Updates Node's block to the Chain's latest block
 func newBlock(n *Node) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Accepting New Block...")
 		// will only add block that contains the current block as previous block
-		err := json.NewDecoder(r.Body).Decode(n.CurBlock)
+		err := json.NewDecoder(r.Body).Decode(n.ChainBlock)
+		n.CurBlock = n.ChainBlock
+		n.CurBlock.Previous = n.ChainBlock
 		n.miningAttempts = 0
 		if err != nil {
 			fmt.Println(err)
@@ -90,14 +95,14 @@ func (n *Node) transact() {
 	// execute trade on current block
 	if operation == "INSERT" {
 		n.CurBlock.Balances[name1] += balance
-		n.CurBlock.Transactions = append(n.CurBlock.Transactions, "Inserted " + strconv.Itoa(balance) + " funds into account " + name1)
+		n.CurBlock.Transactions = append(n.CurBlock.Transactions, "Inserted "+strconv.Itoa(balance)+" funds into account "+name1)
 	} else {
 		if n.CurBlock.Balances[name1] < balance {
 			fmt.Println("Could not execute transaction. Insufficient funds.")
 		} else {
 			n.CurBlock.Balances[name1] -= balance
 			n.CurBlock.Balances[name2] += balance
-			n.CurBlock.Transactions = append(n.CurBlock.Transactions, "Transfered " + strconv.Itoa(balance) + " funds from " + name1 + " to " + name2)
+			n.CurBlock.Transactions = append(n.CurBlock.Transactions, "Transfered "+strconv.Itoa(balance)+" funds from "+name1+" to "+name2)
 		}
 	}
 	fmt.Println("Transaction Complete.")
@@ -105,14 +110,25 @@ func (n *Node) transact() {
 
 func (n *Node) mine() {
 	fmt.Println("Mining attempt " + strconv.Itoa(n.miningAttempts))
-	data, _ := json.Marshal(n.CurBlock)
+	fmt.Printf("%+v\n", *n.CurBlock)
+	data, _ := json.Marshal(*n.CurBlock)
 	b := bytes.NewBuffer(data)
+
+
+	var receivedBlock Block
+	err := json.NewDecoder(b).Decode(&receivedBlock)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%+v\n", receivedBlock)
+
+	fmt.Println(data)
 	res, err := http.Post("http://localhost:8080/verify", "application/json", b)
 	if err != nil {
 		fmt.Println(err)
 	}
 	var response struct {
-		Status string
+		Status     string
 		CoinReward int
 	}
 	_ = json.NewDecoder(res.Body).Decode(&response)

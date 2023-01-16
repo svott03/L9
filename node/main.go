@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	var mynode src.Node;
-	mynode.Run();
+	var mynode src.Node
+	mynode.Run()
 }

@@ -6,5 +6,5 @@ import (
 
 func main() {
 	chain := &src.Chain{}
-	chain.Run();
+	chain.Run()
 }

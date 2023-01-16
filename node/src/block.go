@@ -1,11 +1,15 @@
 package src
 
 type Block struct {
-	ID string
-	Balances map[string]int
-	Transactions []string
-	Target int
-	Nonce int
-	Previous *Block
-	Next *Block
+	ID           string         `json:"ID"`
+	Balances     map[string]int `json:"Balances"`
+	Transactions []string       `json:"Transactions"`
+	Target       int            `json:"target"`
+	Nonce        int            `json:"nonce"`
+	Previous     *Block         `json:"Previous"`
+	Next         *Block         `json:"next"`
+}
+
+type sampleBlock struct {
+	ID string `json:"id"`
 }
