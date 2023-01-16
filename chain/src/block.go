@@ -6,4 +6,6 @@ type Block struct {
 	Transactions []string
 	Target int
 	Nonce int
+	Previous *Block
+	Next *Block
 }

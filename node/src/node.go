@@ -4,22 +4,34 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"encoding/json"
 )
 
 type Node struct {
 	ID    int
-	block *Block
+	Port int
+	CurBlock *Block
 }
 
 // TODO put mutex on Node's block
 
 func (n *Node) Run() {
-	var port int
 	// Connect to blockchain
+	res, err := http.Get("http://localhost:8080/join")
+	if err != nil {
+		fmt.Println(err)
+	}
+	var r struct {
+		Port int
+	}
+	decoder := json.NewDecoder(res.Body)
+	_ = decoder.Decode(&r)
+	n.Port = r.Port
+	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(n.Port))
 
 	// listen on port
-	http.HandleFunc("/newBlock", join(c))
-	http.ListenAndServe(":" + strconv.Itoa(port), nil)
+	http.HandleFunc("/newBlock", newBlock(n))
+	http.ListenAndServe(":" + strconv.Itoa(n.Port), nil)
 
 	fmt.Println("Connected to L9 blockchain with id: " + strconv.Itoa(n.ID))
 	// listen to user input
@@ -45,6 +57,18 @@ func (n *Node) Run() {
 	}
 }
 
+// Updates Node's block to the Chain's latest block
+func newBlock(n *Node) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// will only add block that contains the current block as previous block
+		err := json.NewDecoder(r.Body).Decode(n.CurBlock)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+}
+
+// TODO lock node
 // Incoming Transactions
 func (n *Node) transact() {
 	var operation string
@@ -59,12 +83,20 @@ func (n *Node) transact() {
 	fmt.Scanln(&operation, &balance, &name1, &name2)
 	// execute trade on current block
 	if operation == "INSERT" {
-
+		n.CurBlock.Balances[name1] += balance
 	} else {
-
+		if n.CurBlock.Balances[name1] < balance {
+			fmt.Println("Could not execute transaction. Insufficient funds.")
+		} else {
+			n.CurBlock.Balances[name1] -= balance
+			n.CurBlock.Balances[name2] += balance
+		}
 	}
+	fmt.Println("Transaction Complete.")
 }
 
 func (n *Node) mine() {
 	// output mining attempts
+
+	// make post request to chain's /verify
 }
