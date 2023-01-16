@@ -8,13 +8,11 @@ import (
 )
 
 type Node struct {
-	ID    int
-	Port int
+	Port uint32
 	CurBlock *Block
 }
 
 // TODO put mutex on Node's block
-
 func (n *Node) Run() {
 	// Connect to blockchain
 	res, err := http.Get("http://localhost:8080/join")
@@ -22,20 +20,23 @@ func (n *Node) Run() {
 		fmt.Println(err)
 	}
 	var r struct {
-		Port int
+		Port uint32
+		RootBlock Block
 	}
-	decoder := json.NewDecoder(res.Body)
-	_ = decoder.Decode(&r)
+	_ = json.NewDecoder(res.Body).Decode(&r)
 	n.Port = r.Port
-	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(n.Port))
+	n.CurBlock = &r.RootBlock
+	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(int(n.Port)))
+
+	// need routine for I/O
+	go Input(n)
 
 	// listen on port
 	http.HandleFunc("/newBlock", newBlock(n))
-	http.ListenAndServe(":" + strconv.Itoa(n.Port), nil)
+	http.ListenAndServe(":" + strconv.Itoa(int(n.Port)), nil)
+}
 
-	fmt.Println("Connected to L9 blockchain with id: " + strconv.Itoa(n.ID))
-	// listen to user input
-
+func Input(n *Node) {
 	for {
 		// accept input
 		fmt.Println("----------------------")

@@ -2,12 +2,12 @@ package src
 
 import (
 	"net/http"
-	"encoding/binary"
 	"encoding/json"
 	"bytes"
 	"strconv"
 	"fmt"
-	"cmp"
+	"github.com/google/go-cmp/cmp"
+	"github.com/fatih/color"
 )
 
 type Chain struct {
@@ -21,22 +21,30 @@ func (c *Chain) Run() {
 	c.NodeCount = 0;
 	c.Root = &Block{
 		ID: "Genesis",
+		Balances: make(map[string]int),
 	}
 	// Listens to Concurrent requests
 	http.HandleFunc("/join", join(c))
 	http.HandleFunc("/verify", verify(c))
 
+	fmt.Println("Listening on port 8080")
 	http.ListenAndServe(":8080", nil)
-
+	
 }
 
 // Incoming Nodes
 func join(c *Chain) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		bs := make([]byte, 4)
-    binary.LittleEndian.PutUint32(bs, c.NodeCount)
-		w.Write(bs)
+		var data struct {
+			Port uint32
+			RootBlock Block
+		}
+		data.Port = c.NodeCount
+		data.RootBlock = *c.Root
+		jData, _ := json.Marshal(data)
+		w.Write(jData)
 		c.NodeCount++
+		color.Green("Nodes connected: " + strconv.Itoa(int(c.NodeCount)))
 	}
 }
 
