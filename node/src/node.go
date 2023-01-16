@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"strconv"
 	"encoding/json"
+	"bytes"
 )
 
 type Node struct {
-	Port uint32
+	port uint32
 	CurBlock *Block
+	miningAttempts int
+	coins int
 }
 
 // TODO put mutex on Node's block
@@ -24,16 +27,17 @@ func (n *Node) Run() {
 		RootBlock Block
 	}
 	_ = json.NewDecoder(res.Body).Decode(&r)
-	n.Port = r.Port
+	n.port = r.Port
+	// GC transfers ownership, so the deallocation of r does not affect n.CurBlock
 	n.CurBlock = &r.RootBlock
-	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(int(n.Port)))
+	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(int(n.port)))
 
 	// need routine for I/O
 	go Input(n)
 
 	// listen on port
 	http.HandleFunc("/newBlock", newBlock(n))
-	http.ListenAndServe(":" + strconv.Itoa(int(n.Port)), nil)
+	http.ListenAndServe(":" + strconv.Itoa(int(n.port)), nil)
 }
 
 func Input(n *Node) {
@@ -63,6 +67,7 @@ func newBlock(n *Node) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// will only add block that contains the current block as previous block
 		err := json.NewDecoder(r.Body).Decode(n.CurBlock)
+		n.miningAttempts = 0
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -85,19 +90,37 @@ func (n *Node) transact() {
 	// execute trade on current block
 	if operation == "INSERT" {
 		n.CurBlock.Balances[name1] += balance
+		n.CurBlock.Transactions = append(n.CurBlock.Transactions, "Inserted " + strconv.Itoa(balance) + " funds into account " + name1)
 	} else {
 		if n.CurBlock.Balances[name1] < balance {
 			fmt.Println("Could not execute transaction. Insufficient funds.")
 		} else {
 			n.CurBlock.Balances[name1] -= balance
 			n.CurBlock.Balances[name2] += balance
+			n.CurBlock.Transactions = append(n.CurBlock.Transactions, "Transfered " + strconv.Itoa(balance) + " funds from " + name1 + " to " + name2)
 		}
 	}
 	fmt.Println("Transaction Complete.")
 }
 
 func (n *Node) mine() {
-	// output mining attempts
-
-	// make post request to chain's /verify
+	fmt.Println("Mining attempt " + strconv.Itoa(n.miningAttempts))
+	data, _ := json.Marshal(n.CurBlock)
+	b := bytes.NewBuffer(data)
+	res, err := http.Post("http://localhost:8080/verify", "application/json", b)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var response struct {
+		Status string
+		CoinReward int
+	}
+	_ = json.NewDecoder(res.Body).Decode(&response)
+	if response.CoinReward > 0 {
+		fmt.Println("Success. " + response.Status)
+		n.coins += response.CoinReward
+	} else {
+		fmt.Println("Failure. " + response.Status)
+	}
+	n.miningAttempts++
 }

@@ -93,12 +93,8 @@ func (c* Chain) broadCast() {
 	}
 }
 
-
-// maintain a linked list of blocks
-
-// pool of transactions
-
-// TODO encode transactions in blocks
 // TODO validate transactions
 
 // TODO while broadcasting, cannot accept new incoming requests
+
+// TODO hashing
