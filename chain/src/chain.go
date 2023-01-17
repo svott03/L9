@@ -61,7 +61,8 @@ func verify(c *Chain) http.HandlerFunc {
 		// verify hash
 
 		// will only add block that contains the current block as previous block
-		var receivedBlock Block
+		fmt.Println("------------Verify---------------")
+		var receivedBlock *Block
 		err := json.NewDecoder(r.Body).Decode(&receivedBlock)
 		if err != nil {
 			fmt.Println(err)

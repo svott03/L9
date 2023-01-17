@@ -2,10 +2,12 @@ package src
 
 import (
 	"bytes"
+	// "reflect"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"github.com/mitchellh/copystructure"
 )
 
 type Node struct {
@@ -14,6 +16,12 @@ type Node struct {
 	ChainBlock     *Block `json:"chain_block"`
 	miningAttempts int
 	coins          int
+}
+
+func print_list(root *Block) {
+	if root == nil {return}
+	fmt.Printf("%+v\n", *root)
+	print_list(root.Next)
 }
 
 // TODO put mutex on Node's block
@@ -28,12 +36,15 @@ func (n *Node) Run() {
 		RootBlock *Block
 	}
 	_ = json.NewDecoder(res.Body).Decode(&r)
-	fmt.Printf("%+v\n", *r.RootBlock)
 	n.port = r.Port
 	// GC transfers ownership
 	n.ChainBlock = r.RootBlock
-	n.CurBlock = n.ChainBlock
+	t, _ := copystructure.Copy(n.ChainBlock)
+	n.CurBlock = t.(*Block)
+	// n.CurBlock = reflect.ValueOf(t).Interface().(*Block)
 	n.CurBlock.Previous = n.ChainBlock
+	// n.ChainBlock.Next = n.CurBlock
+	print_list(n.ChainBlock)
 	fmt.Println("Connected to Blockchain! Port is " + strconv.Itoa(int(n.port)))
 	// need routine for I/O
 	go Input(n)
@@ -108,21 +119,34 @@ func (n *Node) transact() {
 	fmt.Println("Transaction Complete.")
 }
 
+
+
+
 func (n *Node) mine() {
 	fmt.Println("Mining attempt " + strconv.Itoa(n.miningAttempts))
-	fmt.Printf("%+v\n", *n.CurBlock)
-	data, _ := json.Marshal(*n.CurBlock)
+	data, err3 := json.Marshal(*(n.CurBlock))
+	if err3 != nil {
+		fmt.Println(err3)
+	}
 	b := bytes.NewBuffer(data)
+	fmt.Println("----------List-------------")
+	print_list(n.CurBlock)
+	fmt.Println("------------Data----------")
+	fmt.Println(data)
+	fmt.Println(string(data))
+	fmt.Println("---------------Mine---------------")
+	fmt.Println(n.CurBlock)
+	fmt.Println(n.ChainBlock)
+	fmt.Println(n.ChainBlock.Next)
+	fmt.Println(n.CurBlock.Previous)
 
-
-	var receivedBlock Block
+	var receivedBlock *Block
 	err := json.NewDecoder(b).Decode(&receivedBlock)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Printf("%+v\n", receivedBlock)
 
-	fmt.Println(data)
 	res, err := http.Post("http://localhost:8080/verify", "application/json", b)
 	if err != nil {
 		fmt.Println(err)

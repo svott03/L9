@@ -6,10 +6,6 @@ type Block struct {
 	Transactions []string       `json:"Transactions"`
 	Target       int            `json:"target"`
 	Nonce        int            `json:"nonce"`
-	Previous     *Block         `json:"Previous"`
-	Next         *Block         `json:"next"`
-}
-
-type sampleBlock struct {
-	ID string `json:"id"`
+	Previous     *Block         `json:"Previous" copy:"shallow"`
+	Next         *Block         `json:"next" copy:"shallow"`
 }
