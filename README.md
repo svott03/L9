@@ -8,7 +8,7 @@ Nodes will try to import only feasible transactions, that is nodes will check pr
 When a new block is added, we must lock all other incoming block requests and update the chain. We then distribute the latest state of the chain to all nodes and the process starts all over again.
 
 ## Discontinued
-We discontinue this project as cannot nicely serialize recursive data structures. 
+We discontinue this project as we cannot nicely serialize recursive data structures. 
 
 ## TODO
 Authentication
